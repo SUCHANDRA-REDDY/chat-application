@@ -1,97 +1,86 @@
-import java.net.*;
-
-import javax.sound.sampled.SourceDataLine;
-
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.io.*;
 
-class Server{
+class Server {
 
-ServerSocket server;
-Socket socket;
+    ServerSocket server;
+    Socket socket;
+    BufferedReader br;
+    PrintWriter out;
 
-BufferedReader br;
-PrintWriter out;
+    // Constructor to initialize server
+    public Server() {
+        try {
+            server = new ServerSocket(7777); // Bind to port 7777
+            System.out.println("Server is ready to accept connections...");
+            System.out.println("Waiting...");
+            socket = server.accept(); // Accept client connection
 
- public Server(){
-      try{server = new ServerSocket(7777);
-        System.out.println("Server is ready to accept connection");
-        System.out.println("waiting...");
-        socket=server.accept();
-        
-        br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            // Set up input stream to receive messages from client
+            br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-        out = new PrintWriter(socket.getOutputStream());
+            // Set up output stream to send messages to client
+            out = new PrintWriter(socket.getOutputStream(), true); // true for auto-flush
 
-        startReading();
-        startWriting();
+            // Start reading and writing in separate threads
+            startReading();
+            startWriting();
 
-
-
-
- } catch(Exception e ){};}
-
-
-public void startReading(){
-  Runnable r1=()->{
-    System.out.println("reader started...");
-
-    try{
-    while(true){
-        
-        String msg = br.readLine();
-        if(msg.equals("EXIT")){System.out.println("Client terminated the chatting");
-         socket.close();
-          break;}
-
-         System.out.println("Client : "+msg);
-    
-    
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-    } catch(Exception e){System.out.print("----Connection is Closed----");}
-  };
+    }
 
-  new Thread(r1).start();
-}
+    // Method to continuously read messages from client
+    public void startReading() {
+        Runnable r1 = () -> {
+            System.out.println("Reader started...");
 
-
-
-public void startWriting(){
-  Runnable r2=()->{
-    System.out.println("Writer started...");
-    
-    try{
-    while(!socket.isClosed()){
-
-          BufferedReader br1 = new BufferedReader(new InputStreamReader(System.in));
-
-             String content=br1.readLine();
-
-             out.println(content);
-             out.flush();
-
-             if(content.equals("EXIT")){
-                socket.close();
-                break;
+            try {
+                while (!socket.isClosed()) {
+                    String msg = br.readLine();
+                    if (msg == null || msg.equalsIgnoreCase("EXIT")) {
+                        System.out.println("Client terminated the chat");
+                        socket.close();
+                        break;
+                    }
+                    System.out.println("Client: " + msg);
+                }
+            } catch (Exception e) {
+                System.out.println("Connection closed!");
             }
+        };
 
-      }
-    } catch(Exception e){System.out.print("----Connection is Closed----");};    
-    
-  };
+        new Thread(r1).start();
+    }
 
-  new Thread(r2).start();
-}
+    // Method to continuously send messages to client
+    public void startWriting() {
+        Runnable r2 = () -> {
+            System.out.println("Writer started...");
 
+            try {
+                BufferedReader br1 = new BufferedReader(new InputStreamReader(System.in));
+                while (!socket.isClosed()) {
+                    String content = br1.readLine();
+                    out.println(content);
 
+                    if (content.equalsIgnoreCase("EXIT")) {
+                        socket.close();
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("Connection closed!");
+            }
+        };
 
+        new Thread(r2).start();
+    }
 
-
-
-public static void main(String[] args){
-    System.out.println("This is server..going to start server");
-    new Server();
-}
-
-
-
+    public static void main(String[] args) {
+        System.out.println("This is the server, starting now...");
+        new Server();
+    }
 }
